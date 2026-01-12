@@ -1,0 +1,42 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: animate-web
+
+  datasource:
+    url: jdbc:postgresql://animate-web-db.xxx.eu-north-1.rds.amazonaws.com:1234/animate_web
+    username: postgres
+    password: xxxxxxxx
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    clean-disabled: true
+
+  sql:
+    init:
+      mode: never
+
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+# DashScope / Ali
+dashscope:
+  api-key: sk-xxxxx
+  base-url: https://dashscope.aliyuncs.com
+
+logging:
+  level:
+    root: INFO
+    com.xxx.animateweb: DEBUG
