@@ -89,12 +89,43 @@ public class DashScopeClient {
 
 
     public DetectResponseDTO detect(String ossUrl) {
-        DetectResponseDTO dto = new DetectResponseDTO();
-        dto.setCheckPass(true);
-        dto.setReason(null);
-        dto.setRequestId("mock-request-id");
-        return dto;
+        try (CloseableHttpClient http = HttpClients.createDefault()) {
+            HttpPost post = new HttpPost(DETECT_URL);
+
+            post.addHeader("Authorization", "Bearer " + apiKey);
+            post.addHeader("Content-Type", "application/json");
+            post.addHeader("X-DashScope-OssResourceResolve", "enable");
+
+            JSONObject body = new JSONObject();
+            body.put("model", "animate-anyone-detect-gen2");
+
+            JSONObject input = new JSONObject();
+            input.put("image_url", ossUrl);
+            body.put("input", input);
+
+            post.setEntity(new StringEntity(body.toString(), ContentType.APPLICATION_JSON));
+
+            try (CloseableHttpResponse resp = http.execute(post)) {
+                String respText = EntityUtils.toString(resp.getEntity(), StandardCharsets.UTF_8);
+
+                if (resp.getStatusLine().getStatusCode() >= 300) {
+                    throw new RuntimeException("DashScope detect failed: " + respText);
+                }
+
+                JSONObject json = new JSONObject(respText);
+                JSONObject output = json.optJSONObject("output");
+
+                DetectResponseDTO dto = new DetectResponseDTO();
+                dto.setCheckPass(output != null && output.optBoolean("check_pass", false));
+                dto.setReason(output != null ? output.optString("reason", null) : null);
+                dto.setRequestId(json.optString("request_id", null));
+                return dto;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("DashScope detect request failed", e);
+        }
     }
+
 
     public SubmitTaskResponseDTO submitVideoSynthesis(String ossUrl, String templateId) throws java.io.IOException {
         JSONObject body = new JSONObject();
