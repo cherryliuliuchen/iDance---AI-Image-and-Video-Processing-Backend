@@ -1,6 +1,7 @@
 # Animate Anyone Video Generator – backend overview
 
 > The purpose is to let users upload an image, choose an animation template, and generate a short video using [Alibaba DashScope Animate Anyone](https://bailian.console.aliyun.com/cn-beijing/?tab=api#/api/?type=model&url=2786464).
+> If you want to experience the Animate Anyone video generation flow, you can try the live demo here[iDance Animate Anyone] (https://livestockholm.com/)
 
 
 > A Spring Boot backend that handles **image upload**, **image detection**, **video generation**, and **task status polling** via DashScope APIs.  

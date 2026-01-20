@@ -33,7 +33,7 @@ public class GenerationServiceImpl implements GenerationService {
             }
 
             UUID userId = upsertUserByEmail(email);
-
+//Determine the final image OSS URL: If the frontend provided an ossUrl, use it directly; otherwise, upload the local file to DashScope OSS.
             String finalOssUrl;
             if (hasOssUrl) {
                 finalOssUrl = ossUrl.trim();
@@ -42,7 +42,7 @@ public class GenerationServiceImpl implements GenerationService {
                 byte[] bytes = file.getBytes();
                 finalOssUrl = dashScopeClient.uploadToDashScopeOss(bytes, filename, "qwen-vl-plus");
             }
-
+//Write the  upload_asset to DB
             UUID assetId = UUID.randomUUID();
             jdbcTemplate.update("""
                 INSERT INTO upload_asset(asset_id, user_id, provider, oss_url, file_name, content_type, file_size_bytes)
@@ -55,9 +55,9 @@ public class GenerationServiceImpl implements GenerationService {
                     hasFile ? file.getContentType() : null,
                     hasFile ? file.getSize() : null
             );
-
+// Call dashscope api to audit the pic
             DetectResponseDTO detect = dashScopeClient.detect(finalOssUrl);
-
+//Write the audit results
             UUID detectionId = UUID.randomUUID();
             jdbcTemplate.update("""
                 INSERT INTO image_detection(detection_id, asset_id, model, check_pass, reason, request_id)
@@ -69,29 +69,29 @@ public class GenerationServiceImpl implements GenerationService {
                     detect.getReason(),
                     detect.getRequestId()
             );
-
+// If audit is failed,response failed.
             if (!detect.isCheckPass()) {
                 return new CreateJobResponse(null, "FAILED", false, null, "Please re-upload the image if it is not up to standard.");
             }
-
+//Insert the video_generation records to DB.
             UUID generationId = UUID.randomUUID();
             jdbcTemplate.update("""
                 INSERT INTO video_generation(generation_id, user_id, detection_id, template_id, model, status, created_at, updated_at)
                 VALUES (?, ?, ?, ?, 'animate-anyone-gen2', 'DETECTED', now(), now())
             """, generationId, userId, detectionId, templateId);
-
+// Submit the dashscope task and get the task id.
             SubmitTaskResponseDTO submit = dashScopeClient.submitVideoSynthesis(finalOssUrl, templateId);
 
             String newStatus = (submit.getTaskStatus() == null || submit.getTaskStatus().isBlank())
                     ? "PENDING"
                     : submit.getTaskStatus();
-
+// Update the task_id/status/request_id
             jdbcTemplate.update("""
                 UPDATE video_generation
                 SET task_id = ?, status = ?, request_id = ?, updated_at = now()
                 WHERE generation_id = ?
             """, submit.getTaskId(), newStatus, submit.getRequestId(), generationId);
-
+// Response to frontend.
             return new CreateJobResponse(
                     generationId.toString(),
                     newStatus,
